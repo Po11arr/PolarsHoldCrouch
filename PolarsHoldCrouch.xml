@@ -16,7 +16,9 @@
 
         No effect in cockpits, seats, on ladders, in spectator, in menus or while chat is open. Jetpack down movement is unchanged.
 
-        No configuration. No Harmony patches. Client-side only, works in single player, on a listen host and on any dedicated server without a server install.
+        No configuration. No Harmony patches. Client-side only, no server install needed.
+
+        Tested in single player. Multiplayer (listen host and dedicated server) is untested so far: please report how it behaves.
 
         Compatibility: does not change any game method, so it sits alongside other input and camera plugins.
 

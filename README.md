@@ -27,7 +27,8 @@ None.
 
 ## Compatibility
 
-- Client-side only. Single player, listen host and dedicated server clients, no server install.
+- Client-side only, no server install needed.
+- Tested in single player. Multiplayer (listen host and dedicated server) is untested so far.
 - No patched methods, so no patch conflicts with other plugins.
 - .NET Framework 4.8 (Legacy) and .NET 10 (Interim) Pulsar runtimes.
 
