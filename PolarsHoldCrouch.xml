@@ -27,6 +27,6 @@
         <Directory>ClientPlugin</Directory>
     </SourceDirectories>
 
-    <Commit>TODO commit hash of the tested commit</Commit>
+    <Commit>638ace11299b0acebd7f2b55c2fd12d6ef03ffa7</Commit>
 
 </PluginData>
