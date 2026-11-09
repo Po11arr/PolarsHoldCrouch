@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
 using Sandbox.Game;
@@ -12,28 +13,41 @@ using VRage.Input;
 namespace PolarsHoldCrouch;
 
 // Vanilla toggles crouch when the Crouch control is first pressed.
-// This adds the missing half: when the control is released, toggle back to standing.
+// In Hold mode this adds the missing half: when the control is released, toggle back to standing.
+// In Hybrid mode a short tap keeps the vanilla toggle and a longer press works like Hold.
+// In Toggle mode it does nothing, so vanilla behaviour is unchanged.
 // No Harmony patches: vanilla input handling is left untouched.
 internal sealed class HoldCrouch
 {
-    // Frames between stand-up attempts while standing is blocked (low ceiling, jetpack on).
-    private const int RetryInterval = 10;
+    // Hybrid mode: a press released sooner than this is a tap.
+    private const int TapMilliseconds = 250;
+    private static readonly long TapTime = Stopwatch.Frequency * TapMilliseconds / 1000;
+
+    private readonly Config config;
+    private readonly CrouchRelease release = new CrouchRelease();
 
     // Reads the character's crouch intent (the flag vanilla's Crouch() toggles),
     // falling back to the visible crouch state if the flag can't be found.
     private readonly Func<MyCharacter, bool> wantsCrouch;
 
     private MyCharacter character;
-    private bool heldCrouch;
-    private int retryCountdown;
 
-    public HoldCrouch()
+    public HoldCrouch(Config config)
     {
+        this.config = config;
         wantsCrouch = BuildWantsCrouchReader();
     }
 
     public void Update()
     {
+        var mode = config.Mode;
+        if (mode == CrouchMode.Toggle)
+        {
+            // Switching to Toggle mid-hold leaves the character crouched, as a vanilla toggle would.
+            Reset(null);
+            return;
+        }
+
         var session = MySession.Static;
         var ch = session?.LocalCharacter;
         if (ch == null || ch.IsDead || ch.MarkedForClose)
@@ -56,48 +70,19 @@ internal sealed class HoldCrouch
             return;
 
         var held = MyControllerHelper.IsControl(controlled.ControlContext, MyControlsSpace.CROUCH, MyControlStateType.PRESSED);
-        if (!held && !heldCrouch)
+        if (!held && release.Idle)
             return;
 
-        var wants = wantsCrouch(ch);
-
-        if (held)
-        {
-            // Pressing while already crouched makes vanilla stand up, so only a press that crouched counts.
-            // Falling clears the flag temporarily (vanilla restores it on landing), so keep the state then.
-            if (wants)
-                heldCrouch = true;
-            else if (!ch.IsFalling)
-                heldCrouch = false;
-
-            retryCountdown = 0;
-            return;
-        }
-
-        if (!wants)
-        {
-            if (!ch.IsFalling)
-                heldCrouch = false;
-            return;
-        }
-
-        if (retryCountdown > 0)
-        {
-            retryCountdown--;
-            return;
-        }
-
-        // Same call vanilla makes on a crouch press. Does nothing if there is no headroom,
-        // the jetpack is on or the character is falling, so it is retried until it succeeds.
-        ch.Crouch();
-        retryCountdown = RetryInterval;
+        // Crouch() is the same call vanilla makes on a crouch press. It does nothing if there is no headroom,
+        // the jetpack is on or the character is falling, so CrouchRelease retries until it succeeds.
+        if (release.Step(mode, held, wantsCrouch(ch), ch.IsFalling, Stopwatch.GetTimestamp(), TapTime))
+            ch.Crouch();
     }
 
     private void Reset(MyCharacter newCharacter)
     {
         character = newCharacter;
-        heldCrouch = false;
-        retryCountdown = 0;
+        release.Reset();
     }
 
     private static bool GameplayHasFocus()

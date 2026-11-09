@@ -1,11 +1,12 @@
 using System;
 using System.Reflection;
+using Sandbox.Graphics.GUI;
 using VRage.Plugins;
 using VRage.Utils;
 
 #if !LOCAL_BUILD
-[assembly: AssemblyVersion("1.0.1.0")]
-[assembly: AssemblyFileVersion("1.0.1.0")]
+[assembly: AssemblyVersion("1.2.1.0")]
+[assembly: AssemblyFileVersion("1.2.1.0")]
 #endif
 
 namespace PolarsHoldCrouch;
@@ -15,6 +16,7 @@ public class Plugin : IPlugin
 {
     public const string Name = "PolarsHoldCrouch";
 
+    private Config config;
     private HoldCrouch holdCrouch;
     private bool failed;
 
@@ -22,8 +24,9 @@ public class Plugin : IPlugin
     {
         try
         {
-            holdCrouch = new HoldCrouch();
-            Log("Loaded");
+            config = Config.Load();
+            holdCrouch = new HoldCrouch(config);
+            Log($"Loaded, crouch mode: {config.Mode}");
         }
         catch (Exception e)
         {
@@ -49,6 +52,23 @@ public class Plugin : IPlugin
     public void Dispose()
     {
         holdCrouch = null;
+    }
+
+    // Called by Pulsar when the player clicks Settings for this plugin.
+    // ReSharper disable once UnusedMember.Global
+    public void OpenConfigDialog()
+    {
+        try
+        {
+            if (config == null)
+                config = Config.Load();
+
+            MyGuiSandbox.AddScreen(new ConfigDialog(config));
+        }
+        catch (Exception e)
+        {
+            Log($"Could not open the settings: {e}");
+        }
     }
 
     private void Fail(string where, Exception e)
